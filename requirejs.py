@@ -5,11 +5,13 @@ import json
 from compressor.js import JsCompressor
 
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.template.loaders.app_directories import app_template_dirs
 from django.contrib.staticfiles import finders
 from django.apps import apps
 
 from compressor.filters.base import FilterBase
+from django.utils.safestring import mark_safe
 
 
 require_pattern = re.compile(r'require\((\[.*\])')
@@ -81,16 +83,36 @@ class RequireJSCompiler(FilterBase):
         content = [self.get_bundle_module(module) for module in modules]
         return '\n'.join(content)
 
+    def write_output(self, content, basename):
+        compressor = JsCompressor()
+        filtered = compressor.filter(content, method='input', kind='js')
+        output = compressor.filter_output(filtered)
+        path = compressor.get_filepath(output, basename=basename)
+        # Force write
+        compressor.storage.save(path, ContentFile(content.encode(compressor.charset)))
+        return mark_safe(compressor.storage.url(path))
+
     def input(self, **kwargs):
         if self.filename:
             # TODO: work out dependency graph instead of list
             modules = self.resolve_dependencies(self.get_template_dependencies())
             bundle = self.get_bundle(modules)
-            # print(bundle)
-            compressor = JsCompressor(content=bundle)
-            output = '\n'.join(compressor.filter_input(forced=True))
-            print(output)
-
-            return 'console.log("{}");'.format(self.filename)
+            bundle_path = self.write_output(bundle, 'bundle.js')
+            with open(self.filename, 'r') as f:
+                require_content = f.read()
+            return """
+            var require = {
+                baseUrl: "{static_root}",
+                bundles: {
+                    '{bundle_path}': {modules}
+                }
+            };
+            {require}
+            """.format(
+                static_root=settings.STATIC_ROOT,
+                bundle_path=bundle_path,
+                modules=json.dumps([m for m in modules]),
+                require=require_content
+            )
         else:
-            raise Exception("Should not get here")
+            raise NotImplementedError
