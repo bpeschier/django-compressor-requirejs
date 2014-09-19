@@ -102,13 +102,7 @@ class RequireJSCompiler(FilterBase):
         compressor.storage.save(path, ContentFile(content.encode(compressor.charset)))
         return mark_safe(compressor.storage.url(path))
 
-    def input(self, **kwargs):
-        if self.filename:
-            with open(self.filename, 'r') as f:
-                require_content = f.read()
-        else:
-            require_content = self.content
-
+    def get_bundle_config(self):
         # TODO: work out dependency graph instead of list
         modules = self.resolve_dependencies(self.get_template_dependencies())
 
@@ -123,20 +117,31 @@ class RequireJSCompiler(FilterBase):
         if modules:
             bundles[self.write_bundle('main', modules)] = list(modules)
 
+        return {
+            'bundles': bundles,
+        }
+
+    @staticmethod
+    def get_default_config():
         paths = {
             app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
         }
         paths.update(REQUIREJS_PATHS)
 
-        return """var require = {{
-baseUrl: "{static_root}",
-paths: {paths},
-bundles: {bundles}
-}};
-{require}
-        """.format(
-            static_root=settings.STATIC_URL,
-            bundles=json.dumps(bundles),
-            paths=json.dumps(paths),
-            require=require_content
-        )
+        return {
+            'baseUrl': settings.STATIC_URL,
+            'paths': paths,
+        }
+
+    def input(self, **kwargs):
+        if self.filename:
+            with open(self.filename, 'r') as f:
+                require_content = f.read()
+        else:
+            require_content = self.content
+
+        config = self.get_default_config()
+        if settings.COMPRESS_ENABLED:
+            config.update(self.get_bundle_config())
+
+        return "var require = {config};{content}".format(config=json.dumps(config), content=require_content)
