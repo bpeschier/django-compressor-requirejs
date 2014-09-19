@@ -6,7 +6,7 @@ import json
 from django.core.files.base import ContentFile
 from django.template.loaders.app_directories import app_template_dirs
 from django.contrib.staticfiles import finders
-from django.apps import apps
+import django
 
 from compressor.conf import settings
 from compressor.filters.base import FilterBase
@@ -57,17 +57,24 @@ class RequireJSCompiler(FilterBase):
                     for dep in self.get_dependencies_from_match(match):
                         yield dep
 
-    @staticmethod
-    def find_module(name):
+    def find_module(self, name):
         module_js = '{}.js'.format(name)
         module_parts = module_js.split('/')
 
         path = finders.find(module_js)
         # Allow app alias (static/<app>/js/...)
-        if path is None and apps.is_installed(module_parts[0]):
+        if path is None and self.is_app_installed(module_parts[0]):
             module_parts.insert(1, 'js')
             path = finders.find('/'.join(module_parts))
         return path
+
+    def is_app_installed(self, label):
+        if django.VERSION >= (1, 7):
+            from django.apps import apps
+
+            return apps.is_installed(label)
+        else:
+            return label in settings.INSTALLED_APPS
 
     def resolve_dependencies(self, modules, known=None):
         if known is None:
@@ -123,9 +130,17 @@ class RequireJSCompiler(FilterBase):
 
     @staticmethod
     def get_default_config():
-        paths = {
-            app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
-        }
+        if django.VERSION >= (1, 7):
+            from django.apps import apps
+
+            paths = {
+                app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
+            }
+        else:
+            paths = {
+                app.split('.')[-1]: '{}/js'.format(app.split('.')[-1]) for app in settings.INSTALLED_APPS
+            }
+
         paths.update(REQUIREJS_PATHS)
 
         return {

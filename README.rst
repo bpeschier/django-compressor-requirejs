@@ -1,6 +1,6 @@
-================
-django-requirejs
-================
+===========================
+django-compressor-requirejs
+===========================
 
 Precompiler for Django Compressor to integrate requirejs-modules into bundles.
 
@@ -39,7 +39,7 @@ to make jQuery available in the main namespace (``"jQuery": "<some path>/jquery"
 
 ``REQUIREJS_BUNDLES`` is a dict to specify which modules get bundled together::
 
- REQUIRE_BUNDLES = {
+ REQUIREJS_BUNDLES = {
     'abovethefold': ['website/awesome', 'website/evenmoreawesome'],
  }
 
