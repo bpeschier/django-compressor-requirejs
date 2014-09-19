@@ -11,7 +11,7 @@ Starting from a Django project with `django-compressor <https://github.com/djang
 
  pip install git+https://github.com/bpeschier/django-requirejs.git
 
-and add requirejs.RequireJSCompiler to your COMPRESS_PRECOMPILERS setting::
+and add ``requirejs.RequireJSCompiler`` to your ``COMPRESS_PRECOMPILERS`` setting::
 
  COMPRESS_PRECOMPILERS = (
      ('text/requirejs', 'requirejs.RequireJSCompiler'),
