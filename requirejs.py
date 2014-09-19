@@ -2,15 +2,15 @@ from itertools import chain
 import os
 import re
 import json
-from compressor.js import JsCompressor
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.template.loaders.app_directories import app_template_dirs
 from django.contrib.staticfiles import finders
 from django.apps import apps
 
+from compressor.conf import settings
 from compressor.filters.base import FilterBase
+from compressor.js import JsCompressor
 from django.utils.safestring import mark_safe
 
 
@@ -18,9 +18,14 @@ require_pattern = re.compile(r'require\((\[.*\])')
 define_pattern = re.compile(r'define\((\[.*\])')
 define_replace_pattern = re.compile(r'define\((.*)\)')
 
+REQUIREJS_PATHS = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_PATHS') else {}
+REQUIREJS_BUNDLES = settings.REQUIREJS_BUNDLES if hasattr(settings, 'REQUIREJS_BUNDLES') else {}
+
 
 class RequireJSCompiler(FilterBase):
     def __init__(self, content, attrs=None, filter_type=None, charset=None, filename=None):
+        self.charset = charset
+        self.attrs = attrs
         super(RequireJSCompiler, self).__init__(content, filter_type, filename)
 
     @staticmethod
@@ -83,7 +88,12 @@ class RequireJSCompiler(FilterBase):
         content = [self.get_bundle_module(module) for module in modules]
         return '\n'.join(content)
 
-    def write_output(self, content, basename):
+    def write_bundle(self, name, modules):
+        bundle = self.get_bundle(modules)
+        return self.write_output(bundle, '{name}.js'.format(name=name))
+
+    @staticmethod
+    def write_output(content, basename):
         compressor = JsCompressor()
         filtered = compressor.filter(content, method='input', kind='js')
         output = compressor.filter_output(filtered)
@@ -94,31 +104,39 @@ class RequireJSCompiler(FilterBase):
 
     def input(self, **kwargs):
         if self.filename:
-            # TODO: work out dependency graph instead of list
-            modules = self.resolve_dependencies(self.get_template_dependencies())
-            bundle = self.get_bundle(modules)
-            bundle_path = self.write_output(bundle, 'bundle.js')
             with open(self.filename, 'r') as f:
                 require_content = f.read()
+        else:
+            require_content = self.content
 
-            paths = {
-                app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
-            }
+        # TODO: work out dependency graph instead of list
+        modules = self.resolve_dependencies(self.get_template_dependencies())
 
-            return """var require = {{
-    baseUrl: "{static_root}",
-    paths: {paths},
-    bundles: {{
-        '{bundle_path}': {modules}
-    }}
+        bundles = {}
+        if REQUIREJS_BUNDLES:
+            for name, bundle_modules in REQUIREJS_BUNDLES.items():
+                bundle_path = self.write_bundle(name, bundle_modules)
+                bundles[bundle_path] = list(bundle_modules)
+                for m in bundle_modules:
+                    modules.discard(m)
+
+        if modules:
+            bundles[self.write_bundle('main', modules)] = list(modules)
+
+        paths = {
+            app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
+        }
+        paths.update(REQUIREJS_PATHS)
+
+        return """var require = {{
+baseUrl: "{static_root}",
+paths: {paths},
+bundles: {bundles}
 }};
 {require}
-            """.format(
-                static_root=settings.STATIC_URL,
-                bundle_path=bundle_path,
-                modules=json.dumps([m for m in modules]),
-                paths=json.dumps(paths),
-                require=require_content
-            )
-        else:
-            raise NotImplementedError
+        """.format(
+            static_root=settings.STATIC_URL,
+            bundles=json.dumps(bundles),
+            paths=json.dumps(paths),
+            require=require_content
+        )

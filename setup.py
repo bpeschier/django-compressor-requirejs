@@ -13,12 +13,12 @@ setup(
     license='MIT',
     long_description=long_description,
     classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
+        'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-    install_requires=['Django>=1.6', 'django_compressor>=1.4'],
+    install_requires=['Django>=1.7', 'django_compressor>=1.4'],
 )
