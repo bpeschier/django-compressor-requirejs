@@ -100,18 +100,24 @@ class RequireJSCompiler(FilterBase):
             bundle_path = self.write_output(bundle, 'bundle.js')
             with open(self.filename, 'r') as f:
                 require_content = f.read()
-            return """
-            var require = {
-                baseUrl: "{static_root}",
-                bundles: {
-                    '{bundle_path}': {modules}
-                }
-            };
-            {require}
+
+            paths = {
+                app.label: '{}/js'.format(app.label) for app in apps.get_app_configs()
+            }
+
+            return """var require = {{
+    baseUrl: "{static_root}",
+    paths: {paths},
+    bundles: {{
+        '{bundle_path}': {modules}
+    }}
+}};
+{require}
             """.format(
-                static_root=settings.STATIC_ROOT,
+                static_root=settings.STATIC_URL,
                 bundle_path=bundle_path,
                 modules=json.dumps([m for m in modules]),
+                paths=json.dumps(paths),
                 require=require_content
             )
         else:
