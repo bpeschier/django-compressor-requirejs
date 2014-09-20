@@ -5,7 +5,7 @@ with open('README.rst') as file:
 
 setup(
     name='django-compressor-requirejs',
-    version='0.1.dev0',
+    version='0.1.dev1',
     url='http://github.com/bpeschier/django-requirejs',
     author="Bas Peschier",
     author_email="bpeschier@fizzgig.nl",
@@ -16,8 +16,9 @@ setup(
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.3',
+        'Programming Language :: Python :: 3.4',
         'Topic :: Software Development :: Libraries :: Python Modules',
     ],
     install_requires=['Django>=1.6', 'django_compressor>=1.4'],
