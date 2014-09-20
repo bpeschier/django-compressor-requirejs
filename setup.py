@@ -5,15 +5,15 @@ with open('README.rst') as file:
 
 setup(
     name='django-compressor-requirejs',
-    version='0.1.dev1',
-    url='http://github.com/bpeschier/django-requirejs',
+    version='0.1',
+    url='http://github.com/bpeschier/django-compressor-requirejs',
     author="Bas Peschier",
     author_email="bpeschier@fizzgig.nl",
     py_modules=['requirejs', ],
     license='MIT',
     long_description=long_description,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.7',
