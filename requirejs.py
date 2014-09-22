@@ -160,7 +160,10 @@ class RequireJSCompiler(FilterBase):
         """
         Rewrite a module into a bundle, which means we have to add the name of the module into the define() call
         """
-        with open(self.find_module(module), 'r') as f:
+        path = self.find_module(module)
+        if not path:
+            raise ValueError("Could not find module {} on disk".format(module))
+        with open(path, 'r') as f:
             content = f.read()
             return define_replace_pattern.sub(r'define("{module}", \1)'.format(module=module), content, re.MULTILINE)
 
