@@ -30,13 +30,15 @@ You can now use the content type text/requirejs on your main RequireJS script ta
 
 The library will by default generate a single bundle with all modules found in templates
 and their dependencies. Dynamic dependencies will not be found. It also sets the ``baseUrl``
-to your ``STATIC_URL`` and adds aliases for all Django apps installed.
+to your ``STATIC_URL``.
 
 If ``COMPRESS_ENABLED`` is ``False``, only the config will be added and RequireJS will load
 modules one by one, without bundles.
 
 Settings
 ~~~~~~~~
+
+You can control RequireJS with three options:
 
 ``REQUIREJS_PATHS`` is a dict in the same style as the RequireJS path config. This can be used for example
 to make jQuery available in the main namespace (``"jquery": "<some path>/jquery.min"``).
@@ -47,7 +49,7 @@ to make jQuery available in the main namespace (``"jquery": "<some path>/jquery.
     'abovethefold': ['website/awesome', 'website/evenmoreawesome'],
  }
 
-Every module not mentioned in this setting will end up in the ``main`` bundle.
+Every module not mentioned in this setting will end up in the ``main`` catch-all bundle.
 
 ``REQUIREJS_APP_ALIAS`` (default ``None``) allows the Javascript directory inside your static root to be addressed by
 just the app name. Require/define calls to ``website/some_module`` will be searched as
