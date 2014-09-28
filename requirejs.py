@@ -17,9 +17,9 @@ from compressor.js import JsCompressor
 from django.utils.safestring import mark_safe
 
 
-require_pattern = re.compile(r'require\((\[.*\])')
-define_pattern = re.compile(r'define\((\[.*\])')
-define_replace_pattern = re.compile(r'define\((.*)\)')
+require_pattern = re.compile(r'[\s|;|^]require\s*\(\s*(\[[\s\S]*\])')
+define_pattern = re.compile(r'[\s|;|^]define\s*\((\s*\[[\s\S]*\])')
+define_replace_pattern = re.compile(r'define\s*\(([\s\S]*)\)')
 
 REQUIREJS_PATHS = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_PATHS') else {}
 REQUIREJS_BUNDLES = settings.REQUIREJS_BUNDLES if hasattr(settings, 'REQUIREJS_BUNDLES') else {}
@@ -116,25 +116,32 @@ class RequireJSCompiler(FilterBase):
     # Dependency discovery
     #
 
-    def get_template_dependencies(self):
-        """
-        Walk through templates defined in the project and find require() calls
-        """
-        for template in self.get_template_files():
-            with open(template, 'r') as f:
-                matches = require_pattern.findall(f.read(), re.MULTILINE)
-                for match in matches:
-                    for dep in self.get_dependencies_from_match(match):
-                        yield dep
+    def get_dependencies(self, content, find_require=True, find_define=True):
+        patterns = []
+        if find_require:
+            patterns.append(require_pattern)
+        if find_define:
+            patterns.append(define_pattern)
+
+        for match in chain(*[pattern.findall(content) for pattern in patterns]):
+            for dep in self.get_dependencies_from_match(match):
+                yield dep
 
     def get_module_dependencies(self, path):
         """
         Load a module and check for require() or define() calls
         """
         with open(path, 'r') as f:
-            content = f.read()
-            for match in chain(require_pattern.findall(content), define_pattern.findall(content)):
-                for dep in self.get_dependencies_from_match(match):
+            for dep in self.get_dependencies(f.read()):
+                yield dep
+
+    def get_template_dependencies(self):
+        """
+        Walk through templates defined in the project and find require() calls
+        """
+        for template in self.get_template_files():
+            with open(template, 'r') as f:
+                for dep in self.get_dependencies(f.read(), find_define=False):
                     yield dep
 
     def resolve_dependencies(self, modules, known=None):
@@ -156,6 +163,14 @@ class RequireJSCompiler(FilterBase):
     # Bundle creation
     #
 
+    @staticmethod
+    def get_bundle_content(module, original_content):
+        return define_replace_pattern.sub(
+            r'define("{module}", \1)'.format(module=module),
+            original_content,
+            re.MULTILINE
+        )
+
     def get_bundle_module(self, module):
         """
         Rewrite a module into a bundle, which means we have to add the name of the module into the define() call
@@ -164,8 +179,7 @@ class RequireJSCompiler(FilterBase):
         if not path:
             raise ValueError("Could not find module {} on disk".format(module))
         with open(path, 'r') as f:
-            content = f.read()
-            return define_replace_pattern.sub(r'define("{module}", \1)'.format(module=module), content, re.MULTILINE)
+            return self.get_bundle_content(module, f.read())
 
     def write_bundle(self, basename, modules):
         """
