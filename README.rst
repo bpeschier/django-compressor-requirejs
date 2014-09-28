@@ -14,7 +14,7 @@ Installation
 First, `install django-compressor <http://django-compressor.readthedocs.org/en/latest/quickstart/#installation>`_
 into your Django project and configure it. Then install django-compressor-requirejs::
 
- pip install git+https://github.com/bpeschier/django-compressor-requirejs.git
+ pip install django-compressor-requirejs
 
 and add ``requirejs.RequireJSCompiler`` to your ``COMPRESS_PRECOMPILERS`` setting::
 
