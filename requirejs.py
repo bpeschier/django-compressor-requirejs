@@ -17,9 +17,9 @@ from compressor.js import JsCompressor
 from django.utils.safestring import mark_safe
 
 
-require_pattern = re.compile(r'[\s|;|^]require\s*\(\s*(\[[\s\S]*\])')
-define_pattern = re.compile(r'[\s|;|^]define\s*\((\s*\[[\s\S]*\])')
-define_replace_pattern = re.compile(r'define\s*\(([\s\S]*)\)')
+require_pattern = re.compile(r'[\s|;|^]require\s*\(\s*(\[[^\]]*\])')
+define_pattern = re.compile(r'[\s|;|^]define\s*\((\s*\[[^\]]*\])')
+define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
 REQUIREJS_PATHS = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_PATHS') else {}
 REQUIREJS_BUNDLES = settings.REQUIREJS_BUNDLES if hasattr(settings, 'REQUIREJS_BUNDLES') else {}

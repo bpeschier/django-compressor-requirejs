@@ -79,6 +79,15 @@ class RequireTests(SimpleTestCase):
         """.format(self.pattern_call))
         self.assertListEqual(['dep1', 'dep2'], list(modules))
 
+    def test_greedyness(self):
+        # Single or double should not matter
+        modules = self.compiler.get_dependencies("""
+        {}(['dep'], function(Dep) {{
+            return Dep.getThingie()[0];
+        }});
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep'], list(modules))
+
 
 # Do everything for define as well
 class DefineTests(RequireTests):
