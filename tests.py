@@ -16,6 +16,9 @@ class RequireTests(SimpleTestCase):
     pattern_call = 'require'
 
     def test_spaceless(self):
+        modules = self.compiler.get_dependencies("""{}(['dep1'], function() {{}});""".format(self.pattern_call))
+        self.assertListEqual(['dep1'], list(modules))
+
         modules = self.compiler.get_dependencies("""
         {}(['dep1'], function() {{}});
         """.format(self.pattern_call))
@@ -30,13 +33,6 @@ class RequireTests(SimpleTestCase):
         # Broken call should mean no dependencies
         modules = self.compiler.get_dependencies("""
         {}(a['dep1'], function() {{}});
-        """.format(self.pattern_call))
-        self.assertListEqual([], list(modules))
-
-        # Require should not be triggered when we
-        # do not actually call it
-        modules = self.compiler.get_dependencies("""
-        some_other_{}(['dep1'], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual([], list(modules))
 
@@ -83,6 +79,37 @@ class RequireTests(SimpleTestCase):
         # Single or double should not matter
         modules = self.compiler.get_dependencies("""
         {}(['dep'], function(Dep) {{
+            return Dep.getThingie()[0];
+        }});
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep'], list(modules))
+
+    def test_prefixes(self):
+        # Require should not be triggered when we
+        # do not actually call it
+        modules = self.compiler.get_dependencies("""
+        some_other_{}(['dep1'], function() {{}});
+        """.format(self.pattern_call))
+        self.assertListEqual([], list(modules))
+
+        # Some prefixed are allowed though, since they
+        # are new statements
+        modules = self.compiler.get_dependencies("""
+        <script>{}(['dep'], function(Dep) {{
+            return new Dep().getThingie()[0];
+        }});
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep'], list(modules))
+
+        modules = self.compiler.get_dependencies("""
+        ;{}(['dep'], function(Dep) {{
+            return Dep.getThingie()[0];
+        }});
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep'], list(modules))
+
+        modules = self.compiler.get_dependencies("""
+        ;{}(['dep'], function(Dep) {{
             return Dep.getThingie()[0];
         }});
         """.format(self.pattern_call))
