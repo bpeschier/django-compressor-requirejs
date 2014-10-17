@@ -1,4 +1,6 @@
 import django
+import unittest
+
 from django.conf import settings
 from django.test import SimpleTestCase
 
@@ -136,3 +138,7 @@ class BundleTests(SimpleTestCase):
             return new Dep().test();
         });
         """)
+
+
+if __name__ == '__main__':
+    unittest.main()
