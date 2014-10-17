@@ -4,6 +4,7 @@ import re
 import json
 
 from django.core.files.base import ContentFile
+from django.utils.six import text_type
 from django.template.loaders.app_directories import app_template_dirs
 from django.contrib.staticfiles import finders
 import django
@@ -104,7 +105,6 @@ class RequireJSCompiler(FilterBase):
 
     @staticmethod
     def get_installed_app_labels():
-        pass
         if django.VERSION >= (1, 7):
             from django.apps import apps
 
@@ -167,7 +167,7 @@ class RequireJSCompiler(FilterBase):
     def get_bundle_content(module, original_content):
         return define_replace_pattern.sub(
             r'define("{module}", \1)'.format(module=module),
-            original_content,
+            text_type(original_content),
             re.MULTILINE
         )
 
