@@ -5,11 +5,11 @@ with open('README.rst') as file:
 
 setup(
     name='django-compressor-requirejs',
-    version='0.2',
+    version='0.3',
     url='http://github.com/bpeschier/django-compressor-requirejs',
     author="Bas Peschier",
     author_email="bpeschier@fizzgig.nl",
-    py_modules=['requirejs', ],
+    packages=['requirejs', ],
     license='MIT',
     long_description=long_description,
     classifiers=[

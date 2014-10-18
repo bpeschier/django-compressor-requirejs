@@ -10,43 +10,44 @@ settings.configure(STATIC_ROOT='/tmp/', STATIC_URL='/')
 if django.VERSION >= (1, 7):
     django.setup()
 
-from requirejs import RequireJSCompiler
+from requirejs.finder import ModuleFinder
+from requirejs.filter import RequireJSCompiler
 
 
-class RequireTests(SimpleTestCase):
-    compiler = RequireJSCompiler('')
+class RequireDiscoverTests(SimpleTestCase):
+    finder = ModuleFinder()
     pattern_call = 'require'
 
     def test_spaceless(self):
-        modules = self.compiler.get_dependencies("""{}(['dep1'], function() {{}});""".format(self.pattern_call))
+        modules = self.finder.get_dependencies("""{}(['dep1'], function() {{}});""".format(self.pattern_call))
         self.assertListEqual(['dep1'], list(modules))
 
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(['dep1'], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual(['dep1'], list(modules))
 
         # Two dependencies
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(['dep1','dep2'], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual(['dep1', 'dep2'], list(modules))
 
         # Broken call should mean no dependencies
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(a['dep1'], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual([], list(modules))
 
     def test_whitespace(self):
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}( [ 'dep1' ] , function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual(['dep1'], list(modules))
 
     def test_multiline_bracket_same(self):
         # Multiline, bracket on same line
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}([
             'dep1'
             ], function() {{}});
@@ -55,7 +56,7 @@ class RequireTests(SimpleTestCase):
 
     def test_multiline_bracket_other(self):
         # Multiline, bracket on other line
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(
             ['dep1'],
             function() {{}}
@@ -65,21 +66,21 @@ class RequireTests(SimpleTestCase):
 
     def test_quotes(self):
         # Single or double should not matter
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(['dep1',"dep2"], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual(['dep1', 'dep2'], list(modules))
 
         # Misaligned should fail in JS, but we will allow it
         # to simplify parsing
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(["dep1','dep2"], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual(['dep1', 'dep2'], list(modules))
 
     def test_greedyness(self):
         # Single or double should not matter
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         {}(['dep'], function(Dep) {{
             return Dep.getThingie()[0];
         }});
@@ -89,28 +90,28 @@ class RequireTests(SimpleTestCase):
     def test_prefixes(self):
         # Require should not be triggered when we
         # do not actually call it
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         some_other_{}(['dep1'], function() {{}});
         """.format(self.pattern_call))
         self.assertListEqual([], list(modules))
 
         # Some prefixed are allowed though, since they
         # are new statements
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         <script>{}(['dep'], function(Dep) {{
             return new Dep().getThingie()[0];
         }});
         """.format(self.pattern_call))
         self.assertListEqual(['dep'], list(modules))
 
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         ;{}(['dep'], function(Dep) {{
             return Dep.getThingie()[0];
         }});
         """.format(self.pattern_call))
         self.assertListEqual(['dep'], list(modules))
 
-        modules = self.compiler.get_dependencies("""
+        modules = self.finder.get_dependencies("""
         ;{}(['dep'], function(Dep) {{
             return Dep.getThingie()[0];
         }});
@@ -119,7 +120,7 @@ class RequireTests(SimpleTestCase):
 
 
 # Do everything for define as well
-class DefineTests(RequireTests):
+class DefineDiscoverTests(RequireDiscoverTests):
     pattern_call = 'define'
 
 
