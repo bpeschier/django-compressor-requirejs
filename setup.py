@@ -12,6 +12,7 @@ setup(
     packages=['requirejs', ],
     license='MIT',
     long_description=long_description,
+    description="Compress requirejs-modules into bundles.",
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
