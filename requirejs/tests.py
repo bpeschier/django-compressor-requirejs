@@ -15,7 +15,7 @@ from requirejs.filter import RequireJSCompiler
 
 
 class RequireDiscoverTests(SimpleTestCase):
-    finder = ModuleFinder()
+    finder = ModuleFinder(tuple(), None)  # We don't need all the get-module-from-disk features
     pattern_call = 'require'
 
     def test_spaceless(self):
@@ -71,12 +71,11 @@ class RequireDiscoverTests(SimpleTestCase):
         """.format(self.pattern_call))
         self.assertListEqual(['dep1', 'dep2'], list(modules))
 
-        # Misaligned should fail in JS, but we will allow it
-        # to simplify parsing
+        # Misaligned should fail
         modules = self.finder.get_dependencies("""
         {}(["dep1','dep2"], function() {{}});
         """.format(self.pattern_call))
-        self.assertListEqual(['dep1', 'dep2'], list(modules))
+        self.assertListEqual([], list(modules))
 
     def test_greedyness(self):
         # Single or double should not matter
@@ -86,6 +85,34 @@ class RequireDiscoverTests(SimpleTestCase):
         }});
         """.format(self.pattern_call))
         self.assertListEqual(['dep'], list(modules))
+
+    def test_comments(self):
+        # Comments should not matter
+        modules = self.finder.get_dependencies("""
+        {}(
+            [
+                'dep1',
+                //'dep2'
+            ],
+            function() {{}}
+        );
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep1'], list(modules))
+
+    def test_dynamic(self):
+        # Dynamic dependencies will not get picked up,
+        # but should not raise an error
+        modules = self.finder.get_dependencies("""
+        {}(
+            [
+                dep_var1,
+                'dep_string',
+                dep_var2
+            ],
+            function() {{}}
+        );
+        """.format(self.pattern_call))
+        self.assertListEqual(['dep_string'], list(modules))
 
     def test_prefixes(self):
         # Require should not be triggered when we

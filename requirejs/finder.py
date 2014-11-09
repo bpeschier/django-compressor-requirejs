@@ -1,12 +1,9 @@
-from itertools import chain
-import json
 import os
 import re
+from itertools import chain
 
-from django.template.loaders.app_directories import app_template_dirs
-from django.contrib.staticfiles import finders
-from django.conf import settings
-import django
+from .utils import is_app_installed
+
 
 require_pattern = re.compile(r'(?:;|\s|>|^)require\s*\(\s*?(\[[^\]]*\])')
 define_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(\[[^\]]*\])')
@@ -17,8 +14,10 @@ class ModuleFinder(object):
     Find RequireJS modules in a Django project
     """
 
-    def __init__(self, app_alias=None):
+    def __init__(self, template_directories, static_finder, app_alias=None):
         self.app_alias = app_alias
+        self.static_finder = static_finder
+        self.template_directories = template_directories
 
     #
     # File discovery
@@ -31,13 +30,12 @@ class ModuleFinder(object):
         # TODO: work out dependency graph instead of list? Is this really needed for bundles?
         return self.resolve_dependencies(self.get_template_dependencies())
 
-    @staticmethod
-    def get_template_files():
+    def get_template_files(self):
         """
         Quick and simple template discovery for TEMPLATE_DIRS and app-based template dirs
         """
         template_files = []
-        for template_dir in (settings.TEMPLATE_DIRS + app_template_dirs):
+        for template_dir in self.template_directories:
             for directory, dirnames, filenames in os.walk(template_dir):
                 for filename in filenames:
                     template_files.append(os.path.join(directory, filename))
@@ -49,13 +47,13 @@ class ModuleFinder(object):
         """
         module_js = '{}.js'.format(name)
 
-        path = finders.find(module_js)
+        path = self.static_finder.find(module_js)
 
         # Check for app alias if we cannot find it
         module_parts = module_js.split('/')
-        if path is None and self.app_alias and self.is_app_installed(module_parts[0]):
+        if path is None and self.app_alias and is_app_installed(module_parts[0]):
             module_parts.insert(1, self.app_alias)
-            path = finders.find('/'.join(module_parts))
+            path = self.static_finder.find('/'.join(module_parts))
 
         return path
 
@@ -68,21 +66,23 @@ class ModuleFinder(object):
         """
         Resolve dependencies from the regex match found in a require() or define() call
         """
-        # XXX this could use some love, for now we assume a list of strings
-        # and convert single quotes into double so we can safely load it as JSON
-        return json.loads(match.replace("'", '"'))
+        # Remove list brackets and strip all whitespace
+        items = [m.strip() for m in match.strip()[1:-1].split(",")]
 
-    @staticmethod
-    def is_app_installed(label):
-        """
-        Check if app is installed into the Django app cache.
-        """
-        if django.VERSION >= (1, 7):
-            from django.apps import apps
+        # Remove commented out items and filter out non-string values. We will not raise
+        # an error since it might be a dynamic dependency.
+        items = [
+            i for i in items if
+            not i.startswith("//")
+            and i[0] == i[-1]
+            and i[0] in ["'", '"']
+            and len(i) > 1
+        ]
 
-            return apps.is_installed(label)
-        else:
-            return label in settings.INSTALLED_APPS
+        # Strip the quotes
+        items = [i[1:-1] for i in items]
+
+        return items
 
     #
     # Dependency discovery

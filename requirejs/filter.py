@@ -1,10 +1,11 @@
 import re
 import json
 
-import django
 from django.utils.six import text_type
 from django.utils.safestring import mark_safe
+from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
+from django.template.loaders.app_directories import app_template_dirs
 
 # noinspection PyPackageRequirements
 from compressor.conf import settings
@@ -14,6 +15,7 @@ from compressor.filters.base import FilterBase
 from compressor.js import JsCompressor
 
 from .finder import ModuleFinder
+from .utils import get_installed_app_labels
 
 define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
@@ -26,8 +28,13 @@ class RequireJSCompiler(FilterBase):
     def __init__(self, content, attrs=None, filter_type=None, charset=None, filename=None):
         self.charset = charset
         self.attrs = attrs
-        self.finder = ModuleFinder(REQUIREJS_APP_ALIAS)
+        self.finder = self.get_module_finder()
         super(RequireJSCompiler, self).__init__(content, filter_type, filename)
+
+    # noinspection PyMethodMayBeStatic
+    def get_module_finder(self):
+        template_directories = settings.TEMPLATE_DIRS + app_template_dirs
+        return ModuleFinder(template_directories, finders, REQUIREJS_APP_ALIAS)
 
     def input(self, **kwargs):
         if self.filename:
@@ -40,7 +47,10 @@ class RequireJSCompiler(FilterBase):
         if settings.COMPRESS_ENABLED:
             config.update(self.get_bundle_config())
 
-        return "var require = {config};{content}".format(config=json.dumps(config), content=require_content)
+        return text_type("var require = {config};{content}").format(config=json.dumps(config), content=require_content)
+
+    def output(self, **kwargs):
+        raise NotImplementedError
 
     #
     # Bundle creation
@@ -115,7 +125,8 @@ class RequireJSCompiler(FilterBase):
             'bundles': bundles,
         } if bundles else {}
 
-    def get_default_config(self):
+    @staticmethod
+    def get_default_config():
         """
         Generate a default config for RequireJS setting the ``baseUrl`` to our ``STATIC_URL`` so we can define
         our modules in static, and add, if configured, aliases for all installed apps
@@ -125,7 +136,7 @@ class RequireJSCompiler(FilterBase):
         if REQUIREJS_APP_ALIAS:
             paths.update({
                 app: '{app}/{alias}'.format(app=app, alias=REQUIREJS_APP_ALIAS)
-                for app in self.get_installed_app_labels()
+                for app in get_installed_app_labels()
             })
 
         paths.update(REQUIREJS_PATHS)
@@ -134,16 +145,3 @@ class RequireJSCompiler(FilterBase):
             'baseUrl': settings.STATIC_URL,
             'paths': paths,
         }
-
-    #
-    # Helper
-    #
-
-    @staticmethod
-    def get_installed_app_labels():
-        if django.VERSION >= (1, 7):
-            from django.apps import apps
-
-            return [app.label for app in apps.get_app_configs()]
-        else:
-            return [app.split('.')[-1] for app in settings.INSTALLED_APPS]
