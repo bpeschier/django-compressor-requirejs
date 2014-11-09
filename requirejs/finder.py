@@ -74,9 +74,9 @@ class ModuleFinder(object):
         items = [
             i for i in items if
             not i.startswith("//")
+            and len(i) > 1
             and i[0] == i[-1]
             and i[0] in ["'", '"']
-            and len(i) > 1
         ]
 
         # Strip the quotes

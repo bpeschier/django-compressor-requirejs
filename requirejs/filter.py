@@ -96,7 +96,7 @@ class RequireJSCompiler(FilterBase):
         output = compressor.filter_output(filtered)
         path = compressor.get_filepath(output, basename=basename)
         # Write it
-        compressor.storage.save(path, ContentFile(content.encode(compressor.charset)))
+        compressor.storage.save(path, ContentFile(output.encode(compressor.charset)))
         return mark_safe(compressor.storage.url(path))
 
     #
