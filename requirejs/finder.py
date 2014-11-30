@@ -14,10 +14,11 @@ class ModuleFinder(object):
     Find RequireJS modules in a Django project
     """
 
-    def __init__(self, template_directories, static_finder, app_alias=None):
-        self.app_alias = app_alias
-        self.static_finder = static_finder
+    def __init__(self, template_directories, static_finder, app_alias=None, main=None):
         self.template_directories = template_directories
+        self.static_finder = static_finder
+        self.app_alias = app_alias
+        self.main = main
 
     #
     # File discovery
@@ -28,7 +29,12 @@ class ModuleFinder(object):
         Main function to query for modules in Django project
         """
         # TODO: work out dependency graph instead of list? Is this really needed for bundles?
-        return self.resolve_dependencies(self.get_template_dependencies())
+
+        starting_modules = self.get_template_dependencies()
+        if self.main:
+            starting_modules = chain([self.main], starting_modules)
+
+        return self.resolve_dependencies(starting_modules)
 
     def get_template_files(self):
         """
