@@ -56,8 +56,8 @@ You can control RequireJS with three settings:
 
 
 - ``REQUIREJS_APP_ALIAS`` (default ``None``) allows the Javascript directory inside your static root to be addressed by
-just the app name. Require/define calls to ``website/some_module`` will be searched as
-``{{ STATIC_URL }}/website/<alias>/some_module.js`` if not found in ``{{ STATIC_URL }}/website/``.
+  just the app name. Require/define calls to ``website/some_module`` will be searched as
+  ``{{ STATIC_URL }}/website/<alias>/some_module.js`` if not found in ``{{ STATIC_URL }}/website/``.
 
 - ``REQUIREJS_INCLUDE_MAIN_BUNDLE`` (default ``False``) will make the plugin include the ``main`` bundle instead of
   generating a bundle for it which needs to be fetched.
