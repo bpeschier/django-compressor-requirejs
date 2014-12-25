@@ -38,22 +38,46 @@ modules one by one, without bundles.
 Settings
 ~~~~~~~~
 
-You can control RequireJS with three options:
+You can control RequireJS with three settings:
 
-``REQUIREJS_PATHS`` is a dict in the same style as the RequireJS path config. This can be used for example
-to make jQuery available in the main namespace (``"jquery": "<some path>/jquery.min"``).
+- ``REQUIREJS_CONFIG`` is a Python-representation of the RequireJS config object. This will be used as a base for the
+  final configuration generated with the RequireJS-source. Within this dict, the ``paths``, ``shims`` and ``bundles``
+  keys will be used to find and process modules in to bundles. Their syntax is the same as in
+  `RequireJS <http://www.requirejs.org/docs/api.html#config>`_.
 
-``REQUIREJS_BUNDLES`` is a dict to specify which modules get bundled together::
+  - ``paths`` will be used to search on disk. Useful to map "``jquery``" and other modules which should be available on
+    a fixed path.
 
- REQUIREJS_BUNDLES = {
-    'abovethefold': ['website/awesome', 'website/evenmoreawesome'],
- }
+  - ``shims`` will be respected when creating bundles. Shims will not be bundled since RequireJS needs to keep track of
+    them.
 
-Every module not mentioned in this setting will end up in the ``main`` catch-all bundle.
+  - ``bundles`` specifies which bundles will be created. Every module not mentioned in this setting will end up
+    in the ``main`` catch-all bundle.
 
-``REQUIREJS_APP_ALIAS`` (default ``None``) allows the Javascript directory inside your static root to be addressed by
+
+- ``REQUIREJS_APP_ALIAS`` (default ``None``) allows the Javascript directory inside your static root to be addressed by
 just the app name. Require/define calls to ``website/some_module`` will be searched as
 ``{{ STATIC_URL }}/website/<alias>/some_module.js`` if not found in ``{{ STATIC_URL }}/website/``.
+
+- ``REQUIREJS_INCLUDE_MAIN_BUNDLE`` (default ``False``) will make the plugin include the ``main`` bundle instead of
+  generating a bundle for it which needs to be fetched.
+
+RequireJS config outside of Django
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``REQUIREJS_CONFIG`` setting is used as the base for your RequireJS configuration and will be written just before
+the RequireJS JavaScript source. If you want to extend the config in your templates instead of the Django settings, you
+need to use ``require.config({..})`` *after* the main tag::
+
+ {% compress js %}
+     <script type="text/requirejs" src="{% static "website/js/libs/require.min.js" %}"></script>
+     <script type="text/javascript">
+        require.config({
+            // ...
+        });
+     </script>
+ {% endcompress %}
+
 
 Under the hood
 ~~~~~~~~~~~~~~

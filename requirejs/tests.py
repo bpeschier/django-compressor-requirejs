@@ -167,6 +167,15 @@ class BundleTests(SimpleTestCase):
         });
         """)
 
+    def test_nonamd_bundle_content(self):
+        content = """
+        function(Dep) {
+            return new Dep().test();
+        }
+        """
+        bundle = self.compiler.get_bundle_content('dep', content)
+        self.assertEqual(bundle, None)
+
 
 if __name__ == '__main__':
     unittest.main()

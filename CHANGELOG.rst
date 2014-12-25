@@ -4,7 +4,9 @@ Changelog
 
 0.4 (2014/12/..)
 ~~~~~~~~~~~~~~~~
-* Respect data-main as a dependency.
+* (Backwards incompatible) Rewritten the settings to follow the RequireJS main configuration object.
+* Shims are now considered when configured and will not be included in bundles.
+* ``data-main`` will picked up as a dependency.
 * Allow bundles to be included in the main library JavaScript file via the REQUIREJS_INCLUDE_MAIN_BUNDLE setting.
 
 0.3 (2014/11/09)

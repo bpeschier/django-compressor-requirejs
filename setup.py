@@ -5,7 +5,7 @@ with open('README.rst') as file:
 
 setup(
     name='django-compressor-requirejs',
-    version='0.3',
+    version='0.4',
     url='http://github.com/bpeschier/django-compressor-requirejs',
     author="Bas Peschier",
     author_email="bpeschier@fizzgig.nl",

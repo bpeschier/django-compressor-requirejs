@@ -28,8 +28,6 @@ class ModuleFinder(object):
         """
         Main function to query for modules in Django project
         """
-        # TODO: work out dependency graph instead of list? Is this really needed for bundles?
-
         starting_modules = self.get_template_dependencies()
         if self.main:
             starting_modules = chain([self.main], starting_modules)

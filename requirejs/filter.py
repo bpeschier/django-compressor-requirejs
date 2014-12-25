@@ -1,3 +1,4 @@
+from copy import deepcopy
 import re
 import json
 
@@ -19,8 +20,7 @@ from .utils import get_installed_app_labels
 
 define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
-PATHS = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_PATHS') else {}
-BUNDLES = settings.REQUIREJS_BUNDLES if hasattr(settings, 'REQUIREJS_BUNDLES') else {}
+CONFIG = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_CONFIG') else {}
 APP_ALIAS = settings.REQUIREJS_APP_ALIAS if hasattr(settings, 'REQUIREJS_APP_ALIAS') else None
 INCLUDE_MAIN_BUNDLE = settings.REQUIREJS_INCLUDE_MAIN_BUNDLE \
     if hasattr(settings, 'REQUIREJS_INCLUDE_MAIN_BUNDLE') else False
@@ -56,6 +56,8 @@ class RequireJSCompiler(FilterBase):
                 config.update({'bundles': bundles})
             if INCLUDE_MAIN_BUNDLE:  # Add the main bundle to the require content written
                 require_content += '\n'.join([self.get_bundle_module(module) for module in main_modules])
+        elif 'bundles' in config:
+            del config['bundles']  # Only write bundles when we compress
 
         return text_type("var require = {config};{content}").format(config=json.dumps(config), content=require_content)
 
@@ -69,13 +71,18 @@ class RequireJSCompiler(FilterBase):
     @staticmethod
     def get_bundle_content(module, original_content):
         """
-        Rewrite the module to include it's module path so it can be included in a bundle
+        Rewrite the module to include it's module path so it can be included in a bundle.
+
+        Returns the rewritten content of the module and None if no define-call was found.
         """
-        return define_replace_pattern.sub(
-            r'define("{module}", \1)'.format(module=module),
-            text_type(original_content),
-            re.MULTILINE
-        )
+        text_content = text_type(original_content)
+        define_call = define_replace_pattern.findall(text_content)
+        if define_call:
+            return define_replace_pattern.sub(
+                r'define("{module}", \1)'.format(module=module),
+                text_content,
+                re.MULTILINE
+            )
 
     def get_bundle_module(self, module):
         """
@@ -84,14 +91,21 @@ class RequireJSCompiler(FilterBase):
         path = self.finder.find_module(module)
         if not path:
             raise ValueError("Could not find module {} on disk".format(module))
+
         with open(path, 'r') as f:
-            return self.get_bundle_content(module, f.read())
+            bundle_module = self.get_bundle_content(module, f.read())
+            if bundle_module is None:
+                raise ValueError("Module {} is not an AMD module".format(module))
+            return bundle_module
 
     def write_bundle(self, basename, modules):
         """
         Let compressor write the bundled modules with a basename.
+
+        This will skip configured shims.
         """
-        bundles = [self.get_bundle_module(module) for module in modules]
+        shims = CONFIG.get('shims', {})
+        bundles = [self.get_bundle_module(module) for module in modules if module not in shims]
         return self.write_output('\n'.join(bundles), '{name}.js'.format(name=basename))
 
     @staticmethod
@@ -119,9 +133,10 @@ class RequireJSCompiler(FilterBase):
         """
         modules = self.finder.get_modules()
         bundles = {}
-        if BUNDLES:
+        configured_bundles = CONFIG.get('bundles', {})
+        if configured_bundles:
             # Let the configured bundles get generated, leaving the remaining modules for the ``main`` bundle.
-            for name, bundle_modules in BUNDLES.items():
+            for name, bundle_modules in configured_bundles.items():
                 bundle_path = self.write_bundle(name, bundle_modules)
                 bundles[bundle_path] = list(bundle_modules)
                 for m in bundle_modules:
@@ -139,17 +154,17 @@ class RequireJSCompiler(FilterBase):
         Generate a default config for RequireJS setting the ``baseUrl`` to our ``STATIC_URL`` so we can define
         our modules in static, and add, if configured, aliases for all installed apps
         """
+        config = deepcopy(CONFIG)
 
-        paths = {}
+        paths = config.get('paths', {})
         if APP_ALIAS:
             paths.update({
                 app: '{app}/{alias}'.format(app=app, alias=APP_ALIAS)
                 for app in get_installed_app_labels()
             })
 
-        paths.update(PATHS)
+        if paths:
+            config['paths'] = paths
 
-        return {
-            'baseUrl': settings.STATIC_URL,
-            'paths': paths,
-        }
+        config['baseUrl'] = settings.STATIC_URL
+        return config
