@@ -20,7 +20,7 @@ from .utils import get_installed_app_labels
 
 define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
-CONFIG = settings.REQUIREJS_PATHS if hasattr(settings, 'REQUIREJS_CONFIG') else {}
+CONFIG = settings.REQUIREJS_CONFIG if hasattr(settings, 'REQUIREJS_CONFIG') else {}
 APP_ALIAS = settings.REQUIREJS_APP_ALIAS if hasattr(settings, 'REQUIREJS_APP_ALIAS') else None
 INCLUDE_MAIN_BUNDLE = settings.REQUIREJS_INCLUDE_MAIN_BUNDLE \
     if hasattr(settings, 'REQUIREJS_INCLUDE_MAIN_BUNDLE') else False
