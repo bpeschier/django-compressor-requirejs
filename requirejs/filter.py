@@ -135,7 +135,7 @@ class RequireJSCompiler(FilterBase):
         This will skip configured shims.
         """
         shims = CONFIG.get('shim', {})
-        modules = [m for m in self.finder.get_modules() if not m in shims]
+        modules = set([m for m in self.finder.get_modules() if not m in shims])
         bundles = {}
         configured_bundles = CONFIG.get('bundles', {})
         if configured_bundles:
