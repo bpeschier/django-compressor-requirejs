@@ -2,12 +2,13 @@
 Changelog
 =========
 
-0.4 (2014/12/..)
-~~~~~~~~~~~~~~~~
+0.4 (2015/1/..)
+~~~~~~~~~~~~~~~
 * (Backwards incompatible) Rewritten the settings to follow the RequireJS main configuration object.
 * Shims are now considered when configured and will not be included in bundles.
 * ``data-main`` will picked up as a dependency.
 * Allow bundles to be included in the main library JavaScript file via the REQUIREJS_INCLUDE_MAIN_BUNDLE setting.
+* Use ``paths`` aliases when resolving modules.
 
 0.3 (2014/11/09)
 ~~~~~~~~~~~~~~~~
