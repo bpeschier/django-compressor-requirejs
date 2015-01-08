@@ -41,14 +41,14 @@ Settings
 You can control RequireJS with three settings:
 
 - ``REQUIREJS_CONFIG`` is a Python-representation of the RequireJS config object. This will be used as a base for the
-  final configuration generated with the RequireJS-source. Within this dict, the ``paths``, ``shims`` and ``bundles``
+  final configuration generated with the RequireJS-source. Within this dict, the ``paths``, ``shim`` and ``bundles``
   keys will be used to find and process modules in to bundles. Their syntax is the same as in
   `RequireJS <http://www.requirejs.org/docs/api.html#config>`_.
 
   - ``paths`` will be used to search on disk. Useful to map "``jquery``" and other modules which should be available on
     a fixed path.
 
-  - ``shims`` will be respected when creating bundles. Shims will not be bundled since RequireJS needs to keep track of
+  - ``shim`` will be respected when creating bundles. Shims will not be bundled since RequireJS needs to keep track of
     them.
 
   - ``bundles`` specifies which bundles will be created. Every module not mentioned in this setting will end up
