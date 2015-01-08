@@ -44,7 +44,9 @@ class RequireJSCompiler(FilterBase):
         shim_dependencies = list(chain(*[s.get('deps', []) for s in CONFIG.get('shim', {}).values()]))
         main_dep = [main] if main else []
         deps = shim_dependencies + main_dep
-        return ModuleFinder(template_directories, finders, app_alias=APP_ALIAS, starting_dependencies=deps)
+        aliases = CONFIG.get('paths', {})
+        return ModuleFinder(template_directories, finders, app_alias=APP_ALIAS, starting_dependencies=deps,
+                            aliases=aliases)
 
     def input(self, **kwargs):
         if self.filename:

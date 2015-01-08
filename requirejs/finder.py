@@ -14,11 +14,12 @@ class ModuleFinder(object):
     Find RequireJS modules in a Django project
     """
 
-    def __init__(self, template_directories, static_finder, app_alias=None, starting_dependencies=None):
+    def __init__(self, template_directories, static_finder, app_alias=None, starting_dependencies=None, aliases=None):
         self.template_directories = template_directories
         self.static_finder = static_finder
         self.app_alias = app_alias
         self.starting_dependencies = starting_dependencies
+        self.aliases = aliases
 
     #
     # File discovery
@@ -64,6 +65,13 @@ class ModuleFinder(object):
     #
     # Helpers
     #
+
+    @staticmethod
+    def get_module_name(name):
+        """
+        Strip arguments from module name.
+        """
+        return name.split('!')[0]
 
     @staticmethod
     def get_dependencies_from_match(match):
@@ -127,10 +135,18 @@ class ModuleFinder(object):
         if known is None:
             known = set()
 
-        for module in [m for m in modules if m not in known]:
-            path = self.find_module(module)
-            if path:  # only continue if we find the module on disk
-                known.add(module)
-                # Fetch all module's dependencies
-                known.update(self.resolve_dependencies(self.get_module_dependencies(path), known=known))
+        for module in modules:
+            # Check if we have an alias for this module
+            if self.aliases and module in self.aliases:
+                module = self.aliases[module]
+
+            # Clean up the module name, it might contain an argument (!..)
+            module = self.get_module_name(module)
+
+            if module not in known:
+                path = self.find_module(module)
+                if path:  # only continue if we find the module on disk
+                    known.add(module)
+                    # Fetch all module's dependencies
+                    known.update(self.resolve_dependencies(self.get_module_dependencies(path), known=known))
         return known
