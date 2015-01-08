@@ -105,11 +105,8 @@ class RequireJSCompiler(FilterBase):
     def write_bundle(self, basename, modules):
         """
         Let compressor write the bundled modules with a basename.
-
-        This will skip configured shims.
         """
-        shims = CONFIG.get('shim', {})
-        bundles = [self.get_bundle_module(module) for module in modules if module not in shims]
+        bundles = [self.get_bundle_module(module) for module in modules]
         return self.write_output('\n'.join(bundles), '{name}.js'.format(name=basename))
 
     @staticmethod
@@ -134,8 +131,11 @@ class RequireJSCompiler(FilterBase):
     def get_bundles(self, skip_main_bundle=False):
         """
         Generate the ``bundles`` configuration option for RequireJS.
+
+        This will skip configured shims.
         """
-        modules = self.finder.get_modules()
+        shims = CONFIG.get('shim', {})
+        modules = [m for m in self.finder.get_modules() if not m in shims]
         bundles = {}
         configured_bundles = CONFIG.get('bundles', {})
         if configured_bundles:
