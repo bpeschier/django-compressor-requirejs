@@ -14,11 +14,11 @@ class ModuleFinder(object):
     Find RequireJS modules in a Django project
     """
 
-    def __init__(self, template_directories, static_finder, app_alias=None, main=None):
+    def __init__(self, template_directories, static_finder, app_alias=None, starting_dependencies=None):
         self.template_directories = template_directories
         self.static_finder = static_finder
         self.app_alias = app_alias
-        self.main = main
+        self.starting_dependencies = starting_dependencies
 
     #
     # File discovery
@@ -29,8 +29,8 @@ class ModuleFinder(object):
         Main function to query for modules in Django project
         """
         starting_modules = self.get_template_dependencies()
-        if self.main:
-            starting_modules = chain([self.main], starting_modules)
+        if self.starting_dependencies:
+            starting_modules = chain(self.starting_dependencies, starting_modules)
 
         return self.resolve_dependencies(starting_modules)
 

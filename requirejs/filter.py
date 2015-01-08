@@ -1,4 +1,5 @@
 from copy import deepcopy
+from itertools import chain
 import re
 import json
 
@@ -40,7 +41,10 @@ class RequireJSCompiler(FilterBase):
     # noinspection PyMethodMayBeStatic
     def get_module_finder(self, main=None):
         template_directories = settings.TEMPLATE_DIRS + app_template_dirs
-        return ModuleFinder(template_directories, finders, app_alias=APP_ALIAS, main=main)
+        shim_dependencies = list(chain(*[s.get('deps', []) for s in CONFIG.get('shim', {}).values()]))
+        main_dep = [main] if main else []
+        deps = shim_dependencies + main_dep
+        return ModuleFinder(template_directories, finders, app_alias=APP_ALIAS, starting_dependencies=deps)
 
     def input(self, **kwargs):
         if self.filename:
