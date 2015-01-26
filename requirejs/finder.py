@@ -7,6 +7,7 @@ from .utils import is_app_installed
 
 require_pattern = re.compile(r'(?:;|\s|>|^)require\s*\(\s*?(\[[^\]]*\])')
 define_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(\[[^\]]*\])')
+define_named_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(("[^"]*")|(\'[^\']*\'))\s*?,\s*?(\[[^\]]*\])')
 
 
 class ModuleFinder(object):
@@ -14,7 +15,8 @@ class ModuleFinder(object):
     Find RequireJS modules in a Django project
     """
 
-    def __init__(self, template_directories, static_finder, app_alias=None, starting_dependencies=None, aliases=None):
+    def __init__(self, template_directories, static_finder,
+                 app_alias=None, starting_dependencies=None, aliases=None):
         self.template_directories = template_directories
         self.static_finder = static_finder
         self.app_alias = app_alias
@@ -41,8 +43,8 @@ class ModuleFinder(object):
         """
         template_files = []
         for template_dir in self.template_directories:
-            for directory, dirnames, filenames in os.walk(template_dir):
-                for filename in filenames:
+            for directory, dir_names, file_names in os.walk(template_dir):
+                for filename in file_names:
                     template_files.append(os.path.join(directory, filename))
         return template_files
 
@@ -61,40 +63,6 @@ class ModuleFinder(object):
             path = self.static_finder.find('/'.join(module_parts))
 
         return path
-
-    #
-    # Helpers
-    #
-
-    @staticmethod
-    def get_module_name(name):
-        """
-        Strip arguments from module name.
-        """
-        return name.split('!')[0]
-
-    @staticmethod
-    def get_dependencies_from_match(match):
-        """
-        Resolve dependencies from the regex match found in a require() or define() call
-        """
-        # Remove list brackets and strip all whitespace
-        items = [m.strip() for m in match.strip()[1:-1].split(",")]
-
-        # Remove commented out items and filter out non-string values. We will not raise
-        # an error since it might be a dynamic dependency.
-        items = [
-            i for i in items if
-            not i.startswith("//")
-            and len(i) > 1
-            and i[0] == i[-1]
-            and i[0] in ["'", '"']
-        ]
-
-        # Strip the quotes
-        items = [i[1:-1] for i in items]
-
-        return items
 
     #
     # Dependency discovery
@@ -150,3 +118,37 @@ class ModuleFinder(object):
                     # Fetch all module's dependencies
                     known.update(self.resolve_dependencies(self.get_module_dependencies(path), known=known))
         return known
+
+    #
+    # Helpers
+    #
+
+    @staticmethod
+    def get_module_name(name):
+        """
+        Strip arguments from module name.
+        """
+        return name.split('!')[0]
+
+    @staticmethod
+    def get_dependencies_from_match(match):
+        """
+        Resolve dependencies from the regex match found in a require() or define() call
+        """
+        # Remove list brackets and strip all whitespace
+        items = [m.strip() for m in match.strip()[1:-1].split(",")]
+
+        # Remove commented out items and filter out non-string values. We will not raise
+        # an error since it might be a dynamic dependency.
+        items = [
+            i for i in items if
+            not i.startswith("//")
+            and len(i) > 1
+            and i[0] == i[-1]
+            and i[0] in ["'", '"']
+        ]
+
+        # Strip the quotes
+        items = [i[1:-1] for i in items]
+
+        return items

@@ -77,7 +77,7 @@ class RequireDiscoverTests(SimpleTestCase):
         """.format(self.pattern_call))
         self.assertListEqual([], list(modules))
 
-    def test_greedyness(self):
+    def test_greedy(self):
         # Single or double should not matter
         modules = self.finder.get_dependencies("""
         {}(['dep'], function(Dep) {{
@@ -85,6 +85,15 @@ class RequireDiscoverTests(SimpleTestCase):
         }});
         """.format(self.pattern_call))
         self.assertListEqual(['dep'], list(modules))
+
+    def test_no_dependencies(self):
+        # Single or double should not matter
+        modules = self.finder.get_dependencies("""
+        {}(function() {{
+            return 42;
+        }});
+        """.format(self.pattern_call))
+        self.assertListEqual([], list(modules))
 
     def test_comments(self):
         # Comments should not matter

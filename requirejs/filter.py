@@ -3,11 +3,20 @@ from itertools import chain
 import re
 import json
 
+import django
 from django.utils.six import text_type
 from django.utils.safestring import mark_safe
 from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
-from django.template.loaders.app_directories import app_template_dirs
+
+if django.VERSION < (1, 8):
+    # noinspection PyUnresolvedReferences
+    from django.template.loaders.app_directories import app_template_dirs
+else:  # Django 1.8's template loader is refactored
+    # noinspection PyUnresolvedReferences
+    from django.template.utils import get_app_template_dirs
+
+    app_template_dirs = get_app_template_dirs('templates')
 
 # noinspection PyPackageRequirements
 from compressor.conf import settings
