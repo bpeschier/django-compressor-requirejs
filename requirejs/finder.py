@@ -1,13 +1,17 @@
 import os
 import re
 from itertools import chain
+from collections import namedtuple
 
 from .utils import is_app_installed
 
 
 require_pattern = re.compile(r'(?:;|\s|>|^)require\s*\(\s*?(\[[^\]]*\])')
 define_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(\[[^\]]*\])')
-define_named_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(("[^"]*")|(\'[^\']*\'))\s*?,\s*?(\[[^\]]*\])')
+define_noargs_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?function')
+define_named_pattern = re.compile(r'(?:;|\s|>|^)define\s*\(\s*?(?:((?:"[^"]*")|(?:\'[^\']*\'))\s*?,\s*?)(\[[^\]]*\])?')
+
+Module = namedtuple('Module', ['id', 'location', 'dependencies', 'named'])
 
 
 class ModuleFinder(object):
@@ -27,7 +31,8 @@ class ModuleFinder(object):
     # File discovery
     #
 
-    def get_modules(self):
+    @property
+    def modules(self):
         """
         Main function to query for modules in Django project
         """
@@ -35,7 +40,7 @@ class ModuleFinder(object):
         if self.starting_dependencies:
             starting_modules = chain(self.starting_dependencies, starting_modules)
 
-        return self.resolve_dependencies(starting_modules)
+        return self.get_modules_from(starting_modules)
 
     def get_template_files(self):
         """
@@ -48,11 +53,15 @@ class ModuleFinder(object):
                     template_files.append(os.path.join(directory, filename))
         return template_files
 
-    def find_module(self, name):
+    def get_module_path(self, module_id):
         """
         Locate a static file for a RequireJS module name.
         """
-        module_js = '{}.js'.format(name)
+        # Check if we have an alias for this module
+        if self.aliases and module_id in self.aliases:
+            module_id = self.aliases[module_id]
+
+        module_js = '{}.js'.format(module_id)
 
         path = self.static_finder.find(module_js)
 
@@ -65,58 +74,71 @@ class ModuleFinder(object):
         return path
 
     #
-    # Dependency discovery
+    # Module discovery
     #
 
-    def get_dependencies(self, content, find_require=True, find_define=True):
-        patterns = []
-        if find_require:
-            patterns.append(require_pattern)
-        if find_define:
-            patterns.append(define_pattern)
+    def get_modules_from_id(self, module_id):
 
-        for match in chain(*[pattern.findall(content) for pattern in patterns]):
-            for dep in self.get_dependencies_from_match(match):
-                yield dep
+        # Clean up the module name, it might contain an argument (!..)
+        module_id = self.get_module_name(module_id)
 
-    def get_module_dependencies(self, path):
-        """
-        Load a module and check for require() or define() calls
-        """
-        with open(path, 'r') as f:
-            for dep in self.get_dependencies(f.read()):
-                yield dep
+        # Treat the id as path and try to find it
+        path = self.get_module_path(module_id)
+
+        if path is not None:
+            content = self.get_module_content(path)
+            return self.extract_modules(module_id, content)
+
+        return []
+
+    def extract_modules(self, module_id, content):
+        dependencies = []
+        # First, find declared require-dependencies
+        for match in require_pattern.findall(content):
+            dependencies.extend(self.get_dependencies_from_match(match))
+
+        # Second, extract all dependencies in define-calls
+        for match in define_pattern.findall(content):
+            dependencies.extend(self.get_dependencies_from_match(match))
+
+        # Convert the define calls into modules
+        for _ in chain(define_pattern.findall(content), define_noargs_pattern.findall(content)):
+            yield Module(id=module_id, location=module_id, dependencies=dependencies, named=False)
+
+        # Named modules get special treatment
+        for match in define_named_pattern.findall(content):
+            defined_id = match[0][1:-1].strip()
+            yield Module(id=defined_id, location=module_id, dependencies=dependencies, named=True)
+
+    #
+    # Dependency discovery
+    #
 
     def get_template_dependencies(self):
         """
         Walk through templates defined in the project and find require() calls
         """
+        dependencies = set()
         for template in self.get_template_files():
             with open(template, 'r') as f:
-                for dep in self.get_dependencies(f.read(), find_define=False):
-                    yield dep
+                for match in require_pattern.findall(f.read()):
+                    dependencies.update(self.get_dependencies_from_match(match))
+        return dependencies
 
-    def resolve_dependencies(self, modules, known=None):
+    def get_modules_from(self, module_ids, known=None):
         """
         Recursively walk through modules and find their dependencies.
         """
         if known is None:
-            known = set()
+            known = []
+        known_ids = [m.id for m in known]
 
-        for module in modules:
-            # Check if we have an alias for this module
-            if self.aliases and module in self.aliases:
-                module = self.aliases[module]
-
-            # Clean up the module name, it might contain an argument (!..)
-            module = self.get_module_name(module)
-
-            if module not in known:
-                path = self.find_module(module)
-                if path:  # only continue if we find the module on disk
-                    known.add(module)
-                    # Fetch all module's dependencies
-                    known.update(self.resolve_dependencies(self.get_module_dependencies(path), known=known))
+        for module_id in [m_id for m_id in module_ids if m_id not in known_ids]:
+            modules = list(self.get_modules_from_id(module_id))
+            known.extend(modules)  # TODO: filter out doubles
+            for module in modules:
+                # Fetch all module's dependencies
+                self.get_modules_from(module.dependencies, known=known)
         return known
 
     #
@@ -131,12 +153,20 @@ class ModuleFinder(object):
         return name.split('!')[0]
 
     @staticmethod
+    def get_module_content(path):
+        with open(path, 'r') as f:
+            return f.read()
+
+    @staticmethod
     def get_dependencies_from_match(match):
         """
         Resolve dependencies from the regex match found in a require() or define() call
         """
+
+        dependencies = match[-1] if isinstance(match, tuple) else match
+
         # Remove list brackets and strip all whitespace
-        items = [m.strip() for m in match.strip()[1:-1].split(",")]
+        items = [m.strip() for m in dependencies.strip()[1:-1].split(",")]
 
         # Remove commented out items and filter out non-string values. We will not raise
         # an error since it might be a dynamic dependency.

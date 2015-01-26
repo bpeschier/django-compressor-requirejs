@@ -51,11 +51,11 @@ class RequireJSCompiler(FilterBase):
     def get_module_finder(self, main=None):
         template_directories = settings.TEMPLATE_DIRS + app_template_dirs
         shim_dependencies = list(chain(*[s.get('deps', []) for s in CONFIG.get('shim', {}).values()]))
-        main_dep = [main] if main else []
-        deps = shim_dependencies + main_dep
+        main_dependency = [main] if main else []
+        dependencies = shim_dependencies + main_dependency
         aliases = CONFIG.get('paths', {})
-        return ModuleFinder(template_directories, finders, app_alias=APP_ALIAS, starting_dependencies=deps,
-                            aliases=aliases)
+        return ModuleFinder(template_directories, finders,
+                            app_alias=APP_ALIAS, starting_dependencies=dependencies, aliases=aliases)
 
     def input(self, **kwargs):
         if self.filename:
@@ -93,24 +93,27 @@ class RequireJSCompiler(FilterBase):
         text_content = text_type(original_content)
         define_call = define_replace_pattern.findall(text_content)
         if define_call:
-            return define_replace_pattern.sub(
-                r'define("{module}", \1)'.format(module=module),
-                text_content,
-                re.MULTILINE
-            )
+            if not module.named:
+                return define_replace_pattern.sub(
+                    r'define("{module}", \1)'.format(module=module.id),
+                    text_content,
+                    re.MULTILINE
+                )
+            else:
+                return text_content
 
     def get_bundle_module(self, module):
         """
         Rewrite a module into a bundle, which means we have to add the name of the module into the define() call
         """
-        path = self.finder.find_module(module)
+        path = self.finder.get_module_path(module.location)
         if not path:
-            raise ValueError("Could not find module {} on disk".format(module))
+            raise ValueError("Could not find module {} on disk".format(module.id))
 
         with open(path, 'r') as f:
             bundle_module = self.get_bundle_content(module, f.read())
             if bundle_module is None:
-                raise ValueError("Module {} is not an AMD module".format(module))
+                raise ValueError("Module {} is not an AMD module".format(module.id))
             return bundle_module
 
     def write_bundle(self, basename, modules):
@@ -146,20 +149,21 @@ class RequireJSCompiler(FilterBase):
         This will skip configured shims.
         """
         shims = CONFIG.get('shim', {})
-        modules = set([m for m in self.finder.get_modules() if m not in shims])
+        modules = [m for m in self.finder.modules if m.id not in shims]
         bundles = {}
         configured_bundles = CONFIG.get('bundles', {})
         if configured_bundles:
             # Let the configured bundles get generated, leaving the remaining modules for the ``main`` bundle.
-            for name, bundle_modules in configured_bundles.items():
+            for name, bundle_module_ids in configured_bundles.items():
+                bundle_modules = [m for m in modules if m.id in bundle_module_ids]
                 bundle_path = self.write_bundle(name, bundle_modules)
-                bundles[bundle_path] = list(bundle_modules)
+                bundles[bundle_path] = [m.id for m in bundle_modules]
                 for m in bundle_modules:
-                    modules.discard(m)
+                    modules.remove(m)
 
         # If we still have modules, write them
         if modules or skip_main_bundle:
-            bundles[self.write_bundle('main', modules)] = list(modules)
+            bundles[self.write_bundle('main', modules)] = [m.id for m in modules]
 
         return bundles, modules
 
