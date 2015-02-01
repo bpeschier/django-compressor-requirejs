@@ -3,20 +3,11 @@ from itertools import chain
 import re
 import json
 
-import django
 from django.utils.six import text_type
 from django.utils.safestring import mark_safe
 from django.contrib.staticfiles import finders
 from django.core.files.base import ContentFile
 
-if django.VERSION < (1, 8):
-    # noinspection PyUnresolvedReferences
-    from django.template.loaders.app_directories import app_template_dirs
-else:  # Django 1.8's template loader is refactored
-    # noinspection PyUnresolvedReferences
-    from django.template.utils import get_app_template_dirs
-
-    app_template_dirs = get_app_template_dirs('templates')
 
 # noinspection PyPackageRequirements
 from compressor.conf import settings
@@ -26,7 +17,7 @@ from compressor.filters.base import FilterBase
 from compressor.js import JsCompressor
 
 from .finder import ModuleFinder
-from .utils import get_installed_app_labels
+from .utils import get_installed_app_labels, get_app_template_dirs
 
 define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
@@ -49,7 +40,7 @@ class RequireJSCompiler(FilterBase):
 
     # noinspection PyMethodMayBeStatic
     def get_module_finder(self, main=None):
-        template_directories = settings.TEMPLATE_DIRS + app_template_dirs
+        template_directories = settings.TEMPLATE_DIRS + get_app_template_dirs()
         shim_dependencies = list(chain(*[s.get('deps', []) for s in CONFIG.get('shim', {}).values()]))
         main_dependency = [main] if main else []
         dependencies = shim_dependencies + main_dependency
