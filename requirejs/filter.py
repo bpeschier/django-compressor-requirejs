@@ -13,11 +13,10 @@ from django.core.files.base import ContentFile
 from compressor.conf import settings
 # noinspection PyPackageRequirements
 from compressor.filters.base import FilterBase
-# noinspection PyPackageRequirements
-from compressor.js import JsCompressor
 
 from .finder import ModuleFinder
 from .utils import get_installed_app_labels, get_app_template_dirs
+from .js import JsCompressor
 
 define_replace_pattern = re.compile(r'define\s*\(([^\)]*?)\)')
 
