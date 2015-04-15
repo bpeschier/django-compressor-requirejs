@@ -75,5 +75,4 @@ class JsCompressor(CompressorJsCompressor):
                            mode=mode, context=final_context)
         template_name = self.get_template_name(mode)
 
-        print(template_name, final_context['compressed'])
         return render_to_string(template_name, context_instance=final_context)
