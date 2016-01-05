@@ -11,7 +11,7 @@ def get_app_template_dirs():
         from django.template.utils import get_app_template_dirs
 
         app_template_dirs = get_app_template_dirs('templates')
-    return app_template_dirs
+    return list(app_template_dirs)
 
 
 def is_app_installed(label):
