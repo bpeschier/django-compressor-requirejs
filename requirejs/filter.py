@@ -80,7 +80,7 @@ class RequireJSCompiler(FilterBase):
 
         Returns the rewritten content of the module and None if no define-call was found.
         """
-        text_content = text_type(original_content)
+        text_content = text_type(original_content, settings.FILE_CHARSET)
         define_call = define_replace_pattern.findall(text_content)
         if define_call:
             if not module.named:
@@ -121,7 +121,7 @@ class RequireJSCompiler(FilterBase):
         """
         # Compress it
         compressor = JsCompressor()
-        filtered = compressor.filter(content, method='input', kind='js')
+        filtered = compressor.filter(content, compressor.cached_filters, method='input', kind='js')
         output = compressor.filter_output(filtered)
         path = compressor.get_filepath(output, basename=basename)
         # Write it
